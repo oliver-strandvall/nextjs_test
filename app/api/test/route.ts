@@ -1,13 +1,24 @@
 import { NextRequest } from "next/server";
+import { cookies } from 'next/headers';
 
 let map = [ { "id": 1, "name": "School", "lat": 59.3, "lng": 18.1 }, { "id": 2, "name": "Library", "lat": 59.4, "lng": 18.05 } ]
 let nextId = 3;
 
 export async function GET() {
+    const cookieStore = await cookies()
+    const role = cookieStore.get('role')?.value;
+    if (role !== 'user' && role !== 'admin') {
+        return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
     return Response.json(map);
 }
 
 export async function POST(req:Request) {
+    const cookieStore = await cookies()
+    const role = cookieStore.get('role')?.value;
+    if (role !== 'user' && role !== 'admin') {
+        return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
     const data = await req.json();
     const newData = {
         id: nextId++,
@@ -20,6 +31,11 @@ export async function POST(req:Request) {
 }
 
 export async function DELETE(req:NextRequest) {
+    const cookieStore = await cookies()
+    const role = cookieStore.get('role')?.value;
+    if (role !== 'admin') {
+        return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     console.log("Deleting id:", id);
@@ -28,6 +44,11 @@ export async function DELETE(req:NextRequest) {
 }
 
 export async function PUT(req:NextRequest) {
+    const cookieStore = await cookies()
+    const role = cookieStore.get('role')?.value;
+    if (role !== 'admin') {
+        return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     const data = await req.json();
