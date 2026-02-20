@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { info as notifyInfo, error as notifyError, notify } from "../lib/notifications";
 
 export default function Home() {
 
@@ -11,9 +12,13 @@ export default function Home() {
   const [lat, setLat] = useState("0");
   const [lng, setLng] = useState("0");
 
+  const [userName, setUserName] = useState("");
+  const [password, setPassword] = useState("");
+
   const [update, setUpdate] = useState(false);
 
-  const [addInfo, setAddInfo] = useState("");
+
+  const [loggedIn, setLoggedIn] = useState(false);
 
   async function getData() {
     const res =  await fetch("/api/test/");
@@ -24,8 +29,6 @@ export default function Home() {
       setError(true);
     }
   }
-
-  console.log(data);
 
   useEffect(() => {
       getData();
@@ -40,18 +43,39 @@ export default function Home() {
       })
       const data = await res.json();
       setUpdate(!update);
-      setAddInfo("Successfully added location");
-      setTimeout(() => setAddInfo(""), 2500);
+      notifyInfo("Location Added successfully");
     } else {
-      setAddInfo("Location incorrectly formatted");
-          setTimeout(() => setAddInfo(""), 2500);
+      notifyError("Location Incorrectly Formatted");
     }
   };
 
+  async function handleLogin(e:React.FormEvent) {
+    e.preventDefault();
+    const res =  await fetch("/api/auth/", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName, password }),
+    });
+    if(res.status == 200) {
+      setError(false);
+      setLoggedIn(true);
+      notifyInfo("Welcome " + userName);
+    } else {
+      setError(true);
+      notifyError("Wrong username or password");
+    }
+  }
+
+  async function handleLogout() {
+    await fetch('/api/auth', { method: 'DELETE' });
+    setLoggedIn(false);
+    notifyInfo("Logged Out successfully");
+  }
+
+  if(loggedIn) {
   if(error) {
   return (
     <main className="bg-blue-950 font-san min-h-screen flex justify-center flex-col items-center gap-5">
-      <h1 className="text-xl font-semibold">Saved Locations:</h1>
       <div className="bg-red-600 rounded-lg w-110 h-15 flex items-center justify-center">
         <h1 className="text-xl font-semibold">Error loading data</h1>
       </div>
@@ -62,32 +86,50 @@ export default function Home() {
 
   return (
     <main className="bg-blue-950 font-san flex justify-center flex-col items-center gap-5 min-h-screen p-25">
-      <h1 className="text-xl font-semibold">Saved Locations:</h1>
+      <h1  className="text-xl font-semibold">Saved Locations:</h1>
       <div className="flex items-center justify-center flex-auto flex-wrap">
       {data?.map((location) => (
         <Card key={location.id} location={location} onChange={() => setUpdate(!update)} />
       ))}
       </div>
-      <div className = {`${addInfo ? "bg-blue-600" : "bg-transparent"} rounded-lg w-110 h-15 flex items-center justify-center`}>
-        <p>{addInfo}</p>
-      </div>
-      <form onSubmit={handleSubmit}>
-        <input onChange={(e)=>setName(e.target.value)} type="text" placeholder="Name" className="m-2 p-2 mb-10 rounded-lg bg-blue-900"/>
-        <input onChange={(e)=>setLat(e.target.value)} type="text" placeholder="Latitude" className="m-2 p-2 mb-10 rounded-lg bg-blue-900"/>
-        <input onChange={(e)=>setLng(e.target.value)} type="text" placeholder="Longitude" className="m-2 p-2 mb-10 rounded-lg bg-blue-900"/>
-        <button className="bg-blue-600 p-5 rounded-lg hover:bg-blue-700 active:bg-blue-800 block m-auto">Add Location</button>
+      <form onSubmit={handleSubmit} id="add-form" name="add-form">
+        <div className="flex flex-col items-center gap-2 lg:flex-row lg:gap-4">
+        <input onChange={(e)=>setName(e.target.value)} type="text" placeholder="Name" className="m-2 p-2 mb-10 rounded-lg bg-blue-900 w-80 lg:w-60"/>
+        <input onChange={(e)=>setLat(e.target.value)} type="text" placeholder="Latitude" className="m-2 p-2 mb-10 rounded-lg bg-blue-900 w-80 lg:w-60"/>
+        <input onChange={(e)=>setLng(e.target.value)} type="text" placeholder="Longitude" className="m-2 p-2 mb-10 rounded-lg bg-blue-900 w-80 lg:w-60"/>
+        </div>
+        <button className="bg-blue-600 p-5 rounded-lg hover:bg-blue-700 active:bg-blue-800 block m-auto w-80 lg:w-60">Add Location</button>
       </form>
       <p>Data from API-route</p>
+      <div>
+        <button onClick={() => handleLogout()} className="bg-red-600 p-2 mt-15 rounded-lg hover:bg-red-700 active:bg-red-800 w-80 lg:w-60">Logout</button>
+      </div>
     </main>
+  );
+} else {
+  return (
+      <main className="bg-blue-950 font-san min-h-screen flex justify-center flex-col items-center">
+        <div className="bg-blue-900 p-5 rounded-lg m-2 w-80 h-80 flex flex-col items-center justify-self-center">
+          <form onSubmit={handleLogin} id="login-form" name="login-form">
+          <div className="flex flex-wrap items-center h-40 gap-2">
+            <input onChange={(e)=>setUserName(e.target.value)} value={userName} autoComplete="username" type="text" placeholder="Username" className="p-2 rounded-lg bg-blue-950 w-70 h-8"/>
+            <input onChange={(e)=>setPassword(e.target.value)} value={password} autoComplete="current-password" type="password" placeholder="Password" className="p-2 rounded-lg bg-blue-950 w-70 h-8"/>
+          </div>
+        <div className="flex flex-wrap items-center h-40 gap-2">
+          <button type="submit" className="bg-blue-600 p-5 rounded-lg hover:bg-blue-700 active:bg-blue-800 block m-auto w-70">Login</button>
+        </div>
+        </form>
+        </div>
+      </main>
   );
 }
 
 function Card({
   location,
-  onChange
+  onChange,
 }: {
   location: { id: number; name: string; lat: number; lng: number }, 
-  onChange: () => void
+  onChange: () => void,
 }) { 
   const [editing, setEditing] = useState<boolean>(false);
   const [name, setName] = useState(location.name);
@@ -101,12 +143,16 @@ function Card({
       method: "DELETE",
     });
     const data = await res.json();
-    onChange()  
+    if(res.status == 200) {
+      notifyInfo("Deleted Location successfully");
+    } else {
+      notifyError("You are not authorized to delete this location");
+    }
+    onChange()
   }
 
-  async function handleEdit(id:number) {
+  function handleEdit(id:number) {
     setEditing(true);
-    onChange();
   }
 
   async function confirmEdit(id:number) {
@@ -118,15 +164,17 @@ function Card({
     });
     const data = await res.json();
     onChange();
-    setInfo("Successfully edited location");
-    setTimeout(() => setInfo(""), 2500);
+    if(res.status == 200) {
+      notifyInfo("Edited Location successfully");
     } else {
-    setInfo("Edit incorrectly formatted");
-    setTimeout(() => setInfo(""), 2500);
+      notifyError("You are not authorized to edit this location");
+    }
+    } else {
+    notifyError("Edit Incorrectly Formatted");
     }
   }
 
-  async function handleCancel(id:number) {
+  function handleCancel(id:number) {
     setEditing(false);
     onChange();
   }
@@ -143,7 +191,7 @@ function Card({
           <div className={`${info ? "bg-blue-950" : "bg-transparent"} w-70 rounded-lg h-10 flex items-center justify-center`}>
             <p>{info}</p>
           </div>
-          <button onClick={() => confirmEdit(location.id)} className="bg-blue-600 p-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 w-70">Confirm</button>
+          <button onClick={() => confirmEdit(location.id)}  className="bg-blue-600 p-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 w-70">Confirm</button>
           <button onClick={() => handleCancel(location.id)} className="bg-red-600 p-2 rounded-lg hover:bg-red-700 active:bg-red-800 w-70">Cancel</button>
         </div>
       </div>
@@ -172,4 +220,5 @@ function Card({
       </div>
     </div>
   )
+}
 }
